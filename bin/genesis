@@ -2776,7 +2776,7 @@ cmd_ci_stemcells() {
 	for dir in ${STEMCELLS}/*; do
 		local name=${dir##*/}
 		local vers=$(cat ${dir}/version)
-		local sha1=$(cat ${dir}/stemcell.tgz | sha1sum | awk '{print $1}')
+		local sha1=$(curl -LSs $(cat ${dir}/url) | sha1sum | awk '{print $1}')
 
 		pushd ${REPO_IN} >/dev/null
 			for site in */site; do

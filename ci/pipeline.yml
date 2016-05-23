@@ -63,15 +63,15 @@ jobs:
     - get: git
     - get: aws-hvm-stemcell
       params:
-        tarball: true
+        tarball: false
       trigger: true
     - get: vsphere-stemcell
       params:
-        tarball: true
+        tarball: false
       trigger: true
     - get: warden-stemcell
       params:
-        tarball: true
+        tarball: false
       trigger: true
   - config:
       image_resource:
@@ -840,11 +840,7 @@ jobs:
       text_file: out/notif
       username: runwaybot
     put: notification
-resource_types:
-- name: slack-notification
-  source:
-    repository: cfcommunity/slack-notification-resource
-  type: docker-image
+resource_types: []
 resources:
 - name: git
   source:

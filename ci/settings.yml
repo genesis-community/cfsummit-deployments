@@ -9,3 +9,21 @@ meta:
   slack:
     channel: '#botspam'
     webhook: 'http://127.0.0.1'
+
+resource_types:
+  - (( replace ))
+
+jobs:
+- name: stemcells
+  plan:
+  - aggregate:
+    - (( merge on get ))
+    - get: aws-hvm-stemcell
+      params:
+        tarball: false
+    - get: vsphere-stemcell
+      params:
+        tarball: false
+    - get: warden-stemcell
+      params:
+        tarball: false
