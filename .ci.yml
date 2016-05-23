@@ -1,0 +1,26 @@
+alpha: lite/sandbox
+sites:
+  au-1:
+    auto:
+      sandbox: true
+    beta: sandbox
+  eu-1:
+    auto:
+      sandbox: true
+    beta: sandbox
+  lite:
+    auto:
+      sandbox: true
+  us-1:
+    auto:
+      prod: true
+      sandbox: true
+      staging: true
+    beta: sandbox
+  us-2:
+    auto:
+      qa: true
+      sandbox: true
+      staging: true
+    beta: sandbox
+

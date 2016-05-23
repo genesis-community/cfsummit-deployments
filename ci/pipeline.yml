@@ -1,0 +1,1025 @@
+groups:
+- jobs:
+  - stemcells
+  - au-1-prod
+  - au-1-prod-notif
+  - au-1-sandbox
+  - eu-1-prod
+  - eu-1-prod-notif
+  - eu-1-sandbox
+  - lite-sandbox
+  - us-1-prod
+  - us-1-sandbox
+  - us-1-staging
+  - us-2-prod
+  - us-2-prod-notif
+  - us-2-qa
+  - us-2-sandbox
+  - us-2-staging
+  name: '*'
+- jobs:
+  - stemcells
+  name: upkeep
+- jobs:
+  - lite-sandbox
+  name: α
+- jobs:
+  - lite-sandbox
+  - au-1-sandbox
+  - eu-1-sandbox
+  - us-1-sandbox
+  - us-2-sandbox
+  name: β
+- jobs:
+  - lite-sandbox
+  - au-1-sandbox
+  - au-1-prod
+  - au-1-prod-notif
+  name: au-1
+- jobs:
+  - lite-sandbox
+  - eu-1-sandbox
+  - eu-1-prod
+  - eu-1-prod-notif
+  name: eu-1
+- jobs:
+  - lite-sandbox
+  - us-1-sandbox
+  - us-1-prod
+  - us-1-staging
+  name: us-1
+- jobs:
+  - lite-sandbox
+  - us-2-sandbox
+  - us-2-prod
+  - us-2-prod-notif
+  - us-2-qa
+  - us-2-staging
+  name: us-2
+jobs:
+- name: stemcells
+  plan:
+  - aggregate:
+    - get: git
+    - get: aws-hvm-stemcell
+      params:
+        tarball: true
+      trigger: true
+    - get: vsphere-stemcell
+      params:
+        tarball: true
+      trigger: true
+    - get: warden-stemcell
+      params:
+        tarball: true
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+        type: docker-image
+      inputs:
+      - name: git
+      - name: aws-hvm-stemcell
+        path: stemcells/bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+      - name: vsphere-stemcell
+        path: stemcells/bosh-vsphere-esxi-ubuntu-trusty-go_agent
+      - name: warden-stemcell
+        path: stemcells/bosh-warden-boshlite-ubuntu-trusty-go_agent
+      outputs:
+      - name: out
+      params:
+        REPO_OUT: out/git
+        STEMCELLS: stemcells
+      platform: linux
+      run:
+        args:
+        - ci
+        - stemcells
+        path: git/bin/genesis
+    task: update
+  - params:
+      rebase: true
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: au-1-prod
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - au-1-prod-notif
+      resource: "au-1-β-changes"
+      trigger: false
+    - get: local-changes
+      passed:
+      - au-1-prod-notif
+      resource: au-1-prod-changes
+      trigger: false
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: au-1/prod
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: au-1-prod
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: au-1-sandbox
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - lite-sandbox
+      resource: α-changes
+      trigger: true
+    - get: local-changes
+      resource: au-1-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: au-1/sandbox
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: au-1-sandbox
+  - params:
+      repository: out/git
+    put: "au-1-β-changes"
+  public: true
+  serial: true
+- name: eu-1-prod
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - eu-1-prod-notif
+      resource: "eu-1-β-changes"
+      trigger: false
+    - get: local-changes
+      passed:
+      - eu-1-prod-notif
+      resource: eu-1-prod-changes
+      trigger: false
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: eu-1/prod
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: eu-1-prod
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: eu-1-sandbox
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - lite-sandbox
+      resource: α-changes
+      trigger: true
+    - get: local-changes
+      resource: eu-1-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: eu-1/sandbox
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: eu-1-sandbox
+  - params:
+      repository: out/git
+    put: "eu-1-β-changes"
+  public: true
+  serial: true
+- name: lite-sandbox
+  plan:
+  - aggregate:
+    - get: world-changes
+      resource: global-changes
+      trigger: true
+    - get: local-changes
+      resource: lite-sandbox-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: lite/sandbox
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: lite-sandbox
+  - params:
+      repository: out/git
+    put: α-changes
+  public: true
+  serial: true
+- name: us-1-prod
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - us-1-sandbox
+      resource: "us-1-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: us-1-prod-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-1/prod
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-1-prod
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: us-1-sandbox
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - lite-sandbox
+      resource: α-changes
+      trigger: true
+    - get: local-changes
+      resource: us-1-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-1/sandbox
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-1-sandbox
+  - params:
+      repository: out/git
+    put: "us-1-β-changes"
+  public: true
+  serial: true
+- name: us-1-staging
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - us-1-sandbox
+      resource: "us-1-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: us-1-staging-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-1/staging
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-1-staging
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: us-2-prod
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - us-2-prod-notif
+      resource: "us-2-β-changes"
+      trigger: false
+    - get: local-changes
+      passed:
+      - us-2-prod-notif
+      resource: us-2-prod-changes
+      trigger: false
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-2/prod
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-2-prod
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: us-2-qa
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - us-2-sandbox
+      resource: "us-2-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: us-2-qa-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-2/qa
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-2-qa
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: us-2-sandbox
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - lite-sandbox
+      resource: α-changes
+      trigger: true
+    - get: local-changes
+      resource: us-2-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-2/sandbox
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-2-sandbox
+  - params:
+      repository: out/git
+    put: "us-2-β-changes"
+  public: true
+  serial: true
+- name: us-2-staging
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - us-2-sandbox
+      resource: "us-2-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: us-2-staging-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_BOSHES: |
+          aliases:
+            target:
+              71d36859-4f21-446f-8a02-f18d7f1263c6: https://127.0.0.1:25555
+          auth:
+            https://127.0.0.1:25555:
+              password: admin
+              username: admin
+        CI_BRANCH: master
+        CI_PRIVATE_KEY: REDACTED
+        CI_SITE_ENV: us-2/staging
+        LOCAL_CHANGES: local-changes
+        VAULT_APP_ID: concourse
+        VAULT_USER_ID: cfsummit-pipeline
+        WORKING_DIR: out/git
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - stage1
+        path: world-changes/bin/genesis
+    task: us-2-staging
+  - params:
+      repository: out/git
+    put: git
+  public: true
+  serial: true
+- name: au-1-prod-notif
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - au-1-sandbox
+      resource: "au-1-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: au-1-prod-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_SITE_ENV: au-1/prod
+        DRAFT_FILE: out/notif
+        LOCAL_CHANGES: local-changes
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - draft-message
+        path: world-changes/bin/genesis
+    task: draft-message
+  - params:
+      channel: '#botspam'
+      icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+      text_file: out/notif
+      username: runwaybot
+    put: notification
+- name: eu-1-prod-notif
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - eu-1-sandbox
+      resource: "eu-1-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: eu-1-prod-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_SITE_ENV: eu-1/prod
+        DRAFT_FILE: out/notif
+        LOCAL_CHANGES: local-changes
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - draft-message
+        path: world-changes/bin/genesis
+    task: draft-message
+  - params:
+      channel: '#botspam'
+      icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+      text_file: out/notif
+      username: runwaybot
+    put: notification
+- name: us-2-prod-notif
+  plan:
+  - aggregate:
+    - get: world-changes
+      passed:
+      - us-2-sandbox
+      resource: "us-2-β-changes"
+      trigger: true
+    - get: local-changes
+      resource: us-2-prod-changes
+      trigger: true
+  - config:
+      image_resource:
+        source:
+          repository: starkandwayne/concourse
+          tag: latest
+        type: docker-image
+      inputs:
+      - name: world-changes
+      - name: local-changes
+      outputs:
+      - name: out
+      params:
+        CI_SITE_ENV: us-2/prod
+        DRAFT_FILE: out/notif
+        LOCAL_CHANGES: local-changes
+        WORLD_CHANGES: world-changes
+      platform: linux
+      run:
+        args:
+        - ci
+        - draft-message
+        path: world-changes/bin/genesis
+    task: draft-message
+  - params:
+      channel: '#botspam'
+      icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+      text_file: out/notif
+      username: runwaybot
+    put: notification
+resource_types:
+- name: slack-notification
+  source:
+    repository: cfcommunity/slack-notification-resource
+  type: docker-image
+resources:
+- name: git
+  source:
+    branch: master
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: notification
+  source:
+    url: http://127.0.0.1
+  type: slack-notification
+- name: au-1-prod-changes
+  source:
+    branch: master
+    paths:
+    - au-1/prod/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: au-1-changes
+  source:
+    branch: master
+    paths:
+    - au-1/site
+    - au-1/sandbox/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: "au-1-β-changes"
+  source:
+    branch: master
+    paths:
+    - au-1/sandbox/.site
+    - au-1/sandbox/.global
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: eu-1-prod-changes
+  source:
+    branch: master
+    paths:
+    - eu-1/prod/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: eu-1-changes
+  source:
+    branch: master
+    paths:
+    - eu-1/site
+    - eu-1/sandbox/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: "eu-1-β-changes"
+  source:
+    branch: master
+    paths:
+    - eu-1/sandbox/.site
+    - eu-1/sandbox/.global
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: global-changes
+  source:
+    branch: master
+    paths:
+    - bin/genesis
+    - global
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: lite-sandbox-changes
+  source:
+    branch: master
+    paths:
+    - lite/site
+    - lite/sandbox/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: α-changes
+  source:
+    branch: master
+    paths:
+    - lite/sandbox/.global
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-1-prod-changes
+  source:
+    branch: master
+    paths:
+    - us-1/prod/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-1-changes
+  source:
+    branch: master
+    paths:
+    - us-1/site
+    - us-1/sandbox/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: "us-1-β-changes"
+  source:
+    branch: master
+    paths:
+    - us-1/sandbox/.site
+    - us-1/sandbox/.global
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-1-staging-changes
+  source:
+    branch: master
+    paths:
+    - us-1/staging/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-2-prod-changes
+  source:
+    branch: master
+    paths:
+    - us-2/prod/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-2-qa-changes
+  source:
+    branch: master
+    paths:
+    - us-2/qa/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-2-changes
+  source:
+    branch: master
+    paths:
+    - us-2/site
+    - us-2/sandbox/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: "us-2-β-changes"
+  source:
+    branch: master
+    paths:
+    - us-2/sandbox/.site
+    - us-2/sandbox/.global
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: us-2-staging-changes
+  source:
+    branch: master
+    paths:
+    - us-2/staging/*.yml
+    private_key: REDACTED
+    uri: git@github.com:jhunt/cfsummit-deployments
+  type: git
+- name: aws-hvm-stemcell
+  source:
+    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+  type: bosh-io-stemcell
+- name: vsphere-stemcell
+  source:
+    name: bosh-vsphere-esxi-ubuntu-trusty-go_agent
+  type: bosh-io-stemcell
+- name: warden-stemcell
+  source:
+    name: bosh-warden-boshlite-ubuntu-trusty-go_agent
+  type: bosh-io-stemcell
+

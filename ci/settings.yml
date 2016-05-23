@@ -1,0 +1,10 @@
+---
+meta:
+  name: cfsummit
+  github:
+    owner: jhunt
+    repo: cfsummit-deployments
+    private_key: (( vault "secret/cfsummit/git:private" ))
+  slack:
+    channel: '#botspam'
+    webhook: 'http://127.0.0.1'
