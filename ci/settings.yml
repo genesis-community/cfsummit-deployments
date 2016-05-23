@@ -1,6 +1,7 @@
 ---
 meta:
   name: cfsummit
+  target: sw
   github:
     owner: jhunt
     repo: cfsummit-deployments
